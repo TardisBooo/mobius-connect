@@ -1,0 +1,18 @@
+[package]
+name = "mobius-connect"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+authors = ["Tardis"]
+description = "Explicit session lineage, search and reference access for agent harnesses"
+publish = false
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4.5", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+mydesk-core = { git = "https://github.com/TardisBooo/Mobius.git", rev = "6f2765ab493f7a64901c9eb69e6f41bde38ed922" }
+
+[dev-dependencies]
+tempfile = "3"

@@ -1,0 +1,19 @@
+{
+  "name": "mobius-connect",
+  "version": "0.1.0",
+  "description": "Explicit native-session ancestry and source references, without summaries or automatic memory injection.",
+  "author": {
+    "name": "Tardis"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Mobius Connect",
+    "shortDescription": "Use Mobius Connect in Codex.",
+    "longDescription": "Inspect how work flowed between sessions and resolve original records through the independent mobius-connect MCP server. The model chooses whether and what to read.",
+    "developerName": "Tardis",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "Help me use Mobius Connect."
+  },
+  "mcpServers": "./.mcp.json"
+}
