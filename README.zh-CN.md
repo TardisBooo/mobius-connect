@@ -8,23 +8,22 @@ Möbius **Agent 会话层** 的 CLI 与 stdio MCP。
 
 **数据在你这台机器上。** 索引是本地 SQLite。原始 Codex JSONL、Claude 会话和 OpenCode 的 `opencode.db` 不会被改写。Möbius 不卖模型账号。
 
-[English](README.md) · [产品页](http://8.137.87.76/mobius/?lang=zh) · [MCP](docs/MCP.md) · [桌面 README](https://github.com/TardisBooo/Mobius/blob/feat/session-lineage-references/README.zh-CN.md) · [MIT License](LICENSE)
+[English](README.md) · [产品页](http://8.137.87.76/mobius/?lang=zh) · [MCP](docs/MCP.md) · [桌面 README](https://github.com/TardisBooo/Mobius/blob/main/README.zh-CN.md) · [MIT License](LICENSE)
 
 > 开发预览。原生启动审批和跨 Harness 身份绑定仍是发布门槛。兼容性按 Harness 逐项验证。
 
-## 三个名字，同一套核心
+## 两个仓库，同一产品
 
-| 名称 | 是什么 | 在哪 |
-| --- | --- | --- |
-| **Möbius** | 产品：Agent 会话层。Windows 桌面应用。 | [TardisBooo/Mobius](https://github.com/TardisBooo/Mobius) |
-| **mobius-connect** | 对外发布的 CLI + stdio MCP。同一套核心，没有桌面 UI。 | 本仓库 |
-| **mobius / mydesk** | 桌面侧辅助二进制，操作桌面应用自己的金库（`mobius mome …`）。不是对外发布的 CLI。 | 在桌面仓内构建 |
+| 名称 | 是什么 |
+| --- | --- |
+| **Möbius** | Windows 桌面：会话库、PowerShell 工作台、交接图谱、笔记、画布、技能。[TardisBooo/Mobius](https://github.com/TardisBooo/Mobius) |
+| **mobius-connect** | CLI 与 stdio MCP。本仓库。没有桌面 UI。 |
 
 ```
 Claude Code / Codex / OpenCode / Pi / Grok / OMP transcripts
         │   只读适配器（JSONL 或 opencode.db）
         ▼
-   mydesk-core → 本地 SQLite 索引（FTS5/BM25，可选本机 embeddings）
+   本地 SQLite 索引（FTS5/BM25，可选本机 embeddings）
         │
         ├── Möbius 桌面           人在 Windows 工作台
         ├── mobius-connect CLI    人在终端
@@ -42,11 +41,11 @@ cd mobius-connect
 cargo build --release
 ```
 
-本仓库依赖隔壁的 `../desktop/crates/mydesk-core`。持久数据默认在 `D:\DataVault\Mobius`。隔离测试用 `--data-root <dir>`。
+把 [TardisBooo/Mobius](https://github.com/TardisBooo/Mobius) 克隆到本仓库旁边，目录名用 `desktop`。持久数据默认写在本机应用数据目录（Windows 为 `%LOCALAPPDATA%\Mobius`，其他平台为 `~/.local/share/mobius`）。隔离测试用 `--data-root <dir>`。
 
 ## 命令
 
-每条 GIF 是一段脚本化的终端场景，风格与[桌面产品视频](https://github.com/TardisBooo/Mobius/blob/feat/session-lineage-references/apps/website/public/product/chapters/12-cli.gif)第 12 章相同。演示数据为虚构。
+每条 GIF 是一段脚本化的终端场景，风格与[桌面产品视频](https://github.com/TardisBooo/Mobius/blob/main/apps/website/public/product/chapters/12-cli.gif)第 12 章相同。演示数据为虚构。
 
 ### 1. `init` — 创建本地索引
 

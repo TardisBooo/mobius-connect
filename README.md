@@ -8,23 +8,22 @@ Desktop workspace: [TardisBooo/Mobius](https://github.com/TardisBooo/Mobius).
 
 **Yours, on this machine.** The index is local SQLite. Original Codex JSONL, Claude transcripts, and OpenCode `opencode.db` are never rewritten. Möbius does not sell model accounts.
 
-[简体中文](README.zh-CN.md) · [Product site](http://8.137.87.76/mobius/) · [MCP](docs/MCP.md) · [Desktop README](https://github.com/TardisBooo/Mobius/blob/feat/session-lineage-references/README.md) · [MIT License](LICENSE)
+[简体中文](README.zh-CN.md) · [Product site](http://8.137.87.76/mobius/) · [MCP](docs/MCP.md) · [Desktop README](https://github.com/TardisBooo/Mobius/blob/main/README.md) · [MIT License](LICENSE)
 
 > Development preview. Native launch approvals and cross-harness identity binding remain release gates. Compatibility is verified per harness.
 
-## Three names, one core
+## Two repositories, one product
 
-| Name | What it is | Where it lives |
-| --- | --- | --- |
-| **Möbius** | The product: an Agent Session Hub. Desktop app on Windows. | [TardisBooo/Mobius](https://github.com/TardisBooo/Mobius) |
-| **mobius-connect** | The published CLI + stdio MCP binary. Same core, no desktop UI. | this repository |
-| **mobius / mydesk** | Desktop-side helper binaries that operate on the vault the desktop app owns (`mobius mome …`). Not the published CLI. | built inside the desktop repo |
+| Name | What it is |
+| --- | --- |
+| **Möbius** | Windows desktop: session library, PowerShell workbench, handoff graph, notes, canvas, skills. [TardisBooo/Mobius](https://github.com/TardisBooo/Mobius) |
+| **mobius-connect** | CLI and stdio MCP. This repository. No desktop UI. |
 
 ```
 Claude Code / Codex / OpenCode / Pi / Grok / OMP transcripts
         │   read-only adapters (JSONL or opencode.db)
         ▼
-   mydesk-core → local SQLite index (FTS5/BM25, optional localhost embeddings)
+   local SQLite index (FTS5/BM25, optional localhost embeddings)
         │
         ├── Möbius desktop        person at a Windows desk
         ├── mobius-connect CLI    person at a terminal
@@ -42,11 +41,11 @@ cd mobius-connect
 cargo build --release
 ```
 
-This checkout depends on the sibling crate `../desktop/crates/mydesk-core`. Durable data defaults to `D:\DataVault\Mobius`. Use `--data-root <dir>` for an isolated test vault.
+Clone [TardisBooo/Mobius](https://github.com/TardisBooo/Mobius) next to this repository as `desktop`. Durable data defaults to local app data (`%LOCALAPPDATA%\Mobius` on Windows, `~/.local/share/mobius` elsewhere). Use `--data-root <dir>` for an isolated test vault.
 
 ## Commands
 
-Each clip is a scripted terminal scene in the same paper/ink style as the [desktop product film](https://github.com/TardisBooo/Mobius/blob/feat/session-lineage-references/apps/website/public/product/chapters/12-cli.gif). Demo data is fictional.
+Each clip is a scripted terminal scene in the same paper/ink style as the [desktop product film](https://github.com/TardisBooo/Mobius/blob/main/apps/website/public/product/chapters/12-cli.gif). Demo data is fictional.
 
 ### 1. `init` — create the local index
 

@@ -2,7 +2,7 @@
 
 stdio MCP for the Möbius Agent Session Hub. Same binary as the CLI: `mobius-connect mcp serve`.
 
-Desktop MCP (`mydesk-mcp` in [TardisBooo/Mobius](https://github.com/TardisBooo/Mobius)) talks to the vault the desktop app owns. This document is the published agent-facing server.
+The desktop app in [TardisBooo/Mobius](https://github.com/TardisBooo/Mobius) talks to the same local vault. This document is the published agent-facing server.
 
 ## How it fits
 
@@ -10,7 +10,7 @@ Desktop MCP (`mydesk-mcp` in [TardisBooo/Mobius](https://github.com/TardisBooo/M
 approved local sources (JSONL / OpenCode SQLite)
         │  read-only
         ▼
-   mydesk-core index (SQLite FTS5/BM25)
+   local SQLite index (FTS5/BM25)
         │
         ├─ desktop UI
         ├─ mobius-connect CLI
