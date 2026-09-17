@@ -52,6 +52,18 @@ enum Command {
         #[command(subcommand)]
         action: Mcp,
     },
+    /// Detect installed harnesses and print MCP/skill install steps. Never writes hooks.
+    Setup,
+    /// One-shot health and next command for agents.
+    Triage,
+    Semantic {
+        #[command(subcommand)]
+        action: Semantic,
+    },
+    Mome {
+        #[command(subcommand)]
+        action: Mome,
+    },
 }
 #[derive(Subcommand)]
 enum Sources {
@@ -133,6 +145,26 @@ enum Handoff {
 enum Mcp {
     Serve,
 }
+#[derive(Subcommand)]
+enum Semantic {
+    Status,
+    Enable {
+        #[arg(long, default_value = "nomic-embed-text")]
+        model: String,
+    },
+    Disable,
+    Sync,
+}
+#[derive(Subcommand)]
+enum Mome {
+    Recall {
+        query: String,
+        #[arg(long)]
+        provider: Vec<String>,
+        #[arg(long)]
+        max_tokens: Option<usize>,
+    },
+}
 
 fn print(value: impl serde::Serialize) -> Result<()> {
     println!("{}", serde_json::to_string_pretty(&value)?);
@@ -203,7 +235,17 @@ fn main() -> Result<()> {
                     .find(|n| n.session_id == id),
             ),
             Sessions::Search { query: text, limit } => {
-                print(json!({"retrieval_mode":"lexical","hits":query(&desk, &text, limit)?}))
+                let hits = query(&desk, &text, limit)?;
+                print(json!({
+                    "retrieval_mode":"lexical_bm25",
+                    "semantic_status": desk.semantic_status()?,
+                    "hits": hits,
+                    "suggested_next_commands": [
+                        "mobius-connect sessions show <session-id>",
+                        "mobius-connect graph show <session-id>",
+                        "mobius-connect handoff prepare --harness <target> --cwd <dir> <session-id>"
+                    ]
+                }))
             }
             Sessions::Read { id, offset, bytes } => {
                 print(desk.read_session_source_range(&id, offset, bytes)?)
@@ -253,7 +295,77 @@ fn main() -> Result<()> {
             action: Approvals::Handoff { id },
         } => review_approval(&desk, handoff::approval_request(&desk, &id)?),
         Command::Mcp { action: Mcp::Serve } => serve(&desk),
+        Command::Setup => print(setup_report(&desk)?),
+        Command::Triage => print(triage_report(&desk)?),
+        Command::Semantic { action } => match action {
+            Semantic::Status => print(desk.semantic_status()?),
+            Semantic::Enable { model } => print(desk.set_semantic_enabled(true, Some(&model))?),
+            Semantic::Disable => print(desk.set_semantic_enabled(false, None)?),
+            Semantic::Sync => print(desk.sync_mome_embeddings()?),
+        },
+        Command::Mome { action } => match action {
+            Mome::Recall {
+                query,
+                provider,
+                max_tokens,
+            } => {
+                let providers = provider
+                    .iter()
+                    .map(|value| AgentKind::from_str(value))
+                    .collect::<Result<Vec<_>, _>>()?;
+                print(desk.mome_recall(&MomeRecallRequest {
+                    query,
+                    workspace_id: None,
+                    checkout_id: None,
+                    providers,
+                    max_tokens,
+                    retrieval_mode: None,
+                })?)
+            }
+        },
     }
+}
+
+fn setup_report(desk: &MyDesk) -> Result<Value> {
+    Ok(json!({
+        "kind": "mobius_connect_setup",
+        "writes_harness_configuration": false,
+        "hooks": "none",
+        "health": desk.health()?,
+        "semantic": desk.semantic_status()?,
+        "mcp": {
+            "stdio": "mobius-connect mcp serve",
+            "note": "Add this binary as an stdio MCP server. Möbius never installs SessionStart hooks."
+        },
+        "skill": "plugins/mobius-connect/skills/mobius-memory/SKILL.md",
+        "next": [
+            "mobius-connect sources add <harness> <sessions-directory>",
+            "mobius-connect sources refresh",
+            "mobius-connect sessions search <query>"
+        ]
+    }))
+}
+
+fn triage_report(desk: &MyDesk) -> Result<Value> {
+    let health = desk.health()?;
+    let sources = load_approved_session_sources(&desk.paths)?;
+    let next = if sources.roots.is_empty() {
+        "mobius-connect sources add <harness> <sessions-directory>"
+    } else {
+        "mobius-connect sessions search <query>"
+    };
+    Ok(json!({
+        "kind": "mobius_connect_triage",
+        "health": health,
+        "approved_sources": sources.roots.len(),
+        "semantic": desk.semantic_status()?,
+        "next_command": next,
+        "recommended_commands": [
+            next,
+            "mobius-connect doctor",
+            "mobius-connect graph show <session-id>"
+        ]
+    }))
 }
 
 fn review_approval(desk: &MyDesk, request: McpApprovalRequest) -> Result<()> {
@@ -304,8 +416,11 @@ fn mermaid(graph: &lineage::LineageManifest) -> String {
 }
 fn html(graph: &lineage::LineageManifest) -> String {
     let mut out = String::from(
-        "<!doctype html><html lang=en><meta charset=utf-8><meta name=viewport content='width=device-width'><title>Session lineage</title><style>body{font:16px system-ui;max-width:1100px;margin:40px auto;padding:20px;color:#18232d;background:#f7faf9}article{padding:18px;border:1px solid #bac6c5;border-radius:10px;margin:12px 0}code{overflow-wrap:anywhere}li{margin:8px 0}</style><h1>Session lineage</h1><p>Reference-only export. No transcript excerpts or local source paths are included.</p>",
+        "<!doctype html><html lang=en><meta charset=utf-8><meta name=viewport content='width=device-width'><title>Session lineage</title><style>body{font:16px system-ui;max-width:1100px;margin:40px auto;padding:20px;color:#18232d;background:#f7faf9}article{padding:18px;border:1px solid #bac6c5;border-radius:10px;margin:12px 0}code,pre{overflow-wrap:anywhere}pre{background:#eef2f1;padding:12px;border-radius:8px}li{margin:8px 0}</style><h1>Session lineage</h1><p>Reference-only DAG export. No transcript excerpts or local source paths are included.</p>",
     );
+    out.push_str("<h2>Graph</h2><pre>");
+    out.push_str(&escaped(&mermaid(graph)));
+    out.push_str("</pre>");
     for n in &graph.nodes {
         out.push_str(&format!("<article id='n{}'><strong>{}</strong><p>{}</p><code>{}</code><p>Updated: {}</p></article>", graph.nodes.iter().position(|item| item.session_id == n.session_id).unwrap(), escaped(n.harness.as_deref().unwrap_or("unknown")), escaped(n.title.as_deref().unwrap_or("Untitled")), escaped(n.native_id.as_deref().unwrap_or(&n.session_id)), escaped(n.updated_at.as_deref().unwrap_or("unknown"))));
     }
@@ -326,7 +441,7 @@ fn tools() -> Value {
         (
             "prepare_handoff",
             "Prepare immutable references only; does not launch",
-            json!({"session_ids":{"type":"array","items":{"type":"string"},"minItems":1},"harness":{"type":"string","enum":["codex","claude","pi","grok"]},"cwd":{"type":"string"}}),
+            json!({"session_ids":{"type":"array","items":{"type":"string"},"minItems":1},"harness":{"type":"string","enum":["codex","claude","pi","grok","omp","opencode"]},"cwd":{"type":"string"}}),
             vec!["session_ids", "harness", "cwd"],
         ),
         (
@@ -377,6 +492,24 @@ fn tools() -> Value {
             "Explicit byte range; requires a human-issued scoped token",
             json!({"session_id":{"type":"string"},"offset":{"type":"integer","minimum":0},"bytes":{"type":"integer","minimum":1,"maximum":16384},"approval_token":{"type":"string"}}),
             vec!["session_id", "offset", "bytes", "approval_token"],
+        ),
+        (
+            "get_session",
+            "Get one native session identity without loading its transcript",
+            json!({"provider":{"type":"string"},"session_id":{"type":"string"}}),
+            vec!["provider", "session_id"],
+        ),
+        (
+            "mome_recall",
+            "Bounded cited recall over the regenerable local index; hybrid only when embeddings are enabled and ready",
+            json!({"query":{"type":"string"},"providers":{"type":"array","items":{"type":"string"},"minItems":1},"max_tokens":{"type":"integer","minimum":1,"maximum":1200},"approval_token":{"type":"string"}}),
+            vec!["query", "providers", "approval_token"],
+        ),
+        (
+            "request_session_approval",
+            "Describe how a human grants a short-lived token. This server cannot mint one.",
+            json!({"operation":{"type":"string"}}),
+            vec!["operation"],
         ),
     ];
     json!({"tools":entries.into_iter().map(|(name,description,properties,required)| json!({"name":name,"description":description,"inputSchema":{"type":"object","properties":properties,"required":required,"additionalProperties":false},"annotations":{"readOnlyHint":!matches!(name,"prepare_handoff"|"commit_handoff"),"destructiveHint":name=="commit_handoff","openWorldHint":name=="commit_handoff"}})).collect::<Vec<_>>()})
@@ -493,6 +626,49 @@ fn call(desk: &MyDesk, name: &str, args: Value) -> Result<Value> {
             )?;
             desk.read_session_source_range(id, offset, length as usize)
         }
+        "get_session" => {
+            let session = desk
+                .database
+                .get_provider_session(required(&args, "provider")?, required(&args, "session_id")?)?
+                .context("session not found")?;
+            Ok(serde_json::to_value(session)?)
+        }
+        "mome_recall" => {
+            let text = required(&args, "query")?;
+            let providers: Vec<String> = serde_json::from_value(args["providers"].clone())?;
+            let agents = providers
+                .iter()
+                .map(|value| AgentKind::from_str(value))
+                .collect::<Result<Vec<_>, _>>()?;
+            McpApprovalStore::for_paths(&desk.paths)?.authorize(
+                required(&args, "approval_token")?,
+                &McpApprovalAttempt {
+                    operation: "mome_recall".into(),
+                    query: Some(text.into()),
+                    workspace_id: None,
+                    checkout_id: None,
+                    providers: providers.clone(),
+                    provider: None,
+                    session_id: None,
+                    start_ordinal: None,
+                    end_ordinal: None,
+                    requested_chars: 4800,
+                },
+            )?;
+            Ok(serde_json::to_value(desk.mome_recall(&MomeRecallRequest {
+                query: text.into(),
+                workspace_id: None,
+                checkout_id: None,
+                providers: agents,
+                max_tokens: args["max_tokens"].as_u64().map(|value| value as usize),
+                retrieval_mode: None,
+            })?)?)
+        }
+        "request_session_approval" => Ok(json!({
+            "status": "needs_user_approval",
+            "operation": required(&args, "operation")?,
+            "next_step": "Run mobius-connect approvals review <request.json> in a human terminal. This MCP server cannot mint a token."
+        })),
         _ => bail!("unknown tool"),
     }
 }

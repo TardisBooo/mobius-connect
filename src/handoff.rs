@@ -61,7 +61,7 @@ fn quote(value: &str) -> String {
 }
 fn executable(harness: &str) -> Result<PathBuf> {
     ensure!(
-        ["codex", "claude", "pi", "grok"].contains(&harness),
+        ["codex", "claude", "pi", "grok", "omp", "opencode"].contains(&harness),
         "unsupported harness"
     );
     for folder in std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default()) {

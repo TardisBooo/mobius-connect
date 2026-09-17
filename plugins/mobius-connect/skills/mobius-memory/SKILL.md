@@ -5,6 +5,10 @@ description: Inspect the ancestry of selected agent sessions and resolve their o
 
 # Session memory references
 
+Start with `get_index_health` or the CLI `triage` output. Use `search_sessions`
+or `mome_recall` only after the user supplies a scoped approval token. Results
+are cited hits, not a briefing.
+
 Use `get_lineage` for the user's selected session IDs. If an ID is ambiguous,
 use session metadata to distinguish native ID, harness, source and timestamp;
 do not substitute another session because it shares the working directory.
