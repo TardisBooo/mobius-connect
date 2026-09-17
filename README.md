@@ -8,13 +8,11 @@ Desktop workspace: [TardisBooo/Mobius](https://github.com/TardisBooo/Mobius).
 
 **Yours, on this machine.** The index is local SQLite. Original Codex JSONL, Claude transcripts, and OpenCode `opencode.db` are never rewritten. Möbius does not sell model accounts.
 
-[Product site](http://8.137.87.76/mobius/) · [MCP](docs/MCP.md) · [Desktop README](https://github.com/TardisBooo/Mobius/blob/main/README.md) · [MIT License](LICENSE)
+[Product site](http://8.137.87.76/mobius/) · [MCP](docs/MCP.md) · [Desktop README](https://github.com/TardisBooo/Mobius/blob/feat/session-lineage-references/README.md) · [MIT License](LICENSE)
 
 > Development preview. Native launch approvals and cross-harness identity binding remain release gates. Compatibility is verified per harness.
 
 ## Three names, one core
-
-People meet three spellings. They are not three products.
 
 | Name | What it is | Where it lives |
 | --- | --- | --- |
@@ -33,7 +31,7 @@ Claude Code / Codex / OpenCode / Pi / Grok / OMP transcripts
         └── mobius-connect MCP    agent over stdio
 ```
 
-**CLI vs MCP, in one line:** the CLI is for a human at a terminal (it can ask *you* to type `APPROVE`); MCP is for an agent process (it can list metadata, but every read of transcript bodies needs a token the CLI/desktop minted after a human typed `APPROVE`). MCP cannot mint approval tokens, add sources, or attach a PTY.
+**CLI vs MCP:** the CLI is for a human at a terminal (it can ask *you* to type `APPROVE`); MCP is for an agent process (it can list metadata, but every read of transcript bodies needs a token minted after a human typed `APPROVE`). MCP cannot mint approval tokens, add sources, or attach a PTY.
 
 ## Install
 
@@ -44,35 +42,38 @@ cd mobius-connect
 cargo build --release
 ```
 
-This checkout depends on the sibling crate `../desktop/crates/mydesk-core`, so clone the desktop repo next to it (or fix the path in `Cargo.toml`). Durable data defaults to `D:\DataVault\Mobius`. Use `--data-root <dir>` (global flag) for an isolated test vault.
+This checkout depends on the sibling crate `../desktop/crates/mydesk-core`. Durable data defaults to `D:\DataVault\Mobius`. Use `--data-root <dir>` for an isolated test vault.
 
-## Tutorial: every command and what it does
+## Commands
 
-Run `mobius-connect --help` for the authoritative list. This is the guided tour.
+Each clip is a scripted terminal scene in the same paper/ink style as the [desktop product film](https://github.com/TardisBooo/Mobius/blob/feat/session-lineage-references/apps/website/public/product/chapters/12-cli.gif). Demo data is fictional.
 
-### 1. First run: `init`
+### 1. `init` — create the local index
+
+![mobius-connect init](docs/gifs/01-init.gif)
 
 ```powershell
 mobius-connect init
 ```
 
-Creates the SQLite index and vault layout, then prints a health report. Safe to re-run; it does not touch any harness directory. `init` never discovers anything by itself — sources are always explicit (next step).
+Creates the SQLite index and vault layout, then prints a health report. Safe to re-run; it does not touch any harness directory. Sources are always explicit.
 
-### 2. Point it at your history: `sources add` / `sources list` / `sources refresh`
+### 2. `sources add` / `refresh` — approve one directory
+
+![mobius-connect sources add and refresh](docs/gifs/02-sources.gif)
 
 ```powershell
-mobius-connect sources add codex    $env:USERPROFILE\.codex\sessions
-mobius-connect sources add claude   $env:USERPROFILE\.claude\projects
 mobius-connect sources add opencode $env:USERPROFILE\.local\share\opencode
 mobius-connect sources list
 mobius-connect sources refresh
 ```
 
-- `sources add <harness> <path>` registers **one** directory you chose. This is the only way a source gets approved; MCP has no tool for it.
-- `sources list` prints the approved roots and their mode.
-- `sources refresh` re-scans approved roots and updates the read-only index. It reports per-root counts (`indexed`, `unchanged`, `skipped`, `errors`). OpenCode roots are read from `opencode.db` with locator `{db}#opencode:{id}`; JSONL roots are parsed per session file.
+- `sources add <harness> <path>` registers **one** directory you chose. MCP has no tool for this.
+- `sources refresh` re-scans approved roots. OpenCode roots are read from `opencode.db` with locator `{db}#opencode:{id}`.
 
-### 3. Check health: `triage` / `doctor` / `setup`
+### 3. `triage` — one next command
+
+![mobius-connect triage](docs/gifs/03-triage.gif)
 
 ```powershell
 mobius-connect triage
@@ -80,50 +81,55 @@ mobius-connect doctor
 mobius-connect setup
 ```
 
-- `triage` prints health, approved-source count, semantic status, and **one recommended next command**. Start here when unsure.
-- `doctor` is the deeper health dump (same as `init` output).
-- `setup` detects installed harnesses and prints the exact MCP-client and skill install steps. It never writes hooks or harness config.
+`triage` prints health, approved-source count, semantic status, and **one recommended next command**. `setup` detects installed harnesses and prints MCP-client steps. It never writes hooks.
 
-### 4. Find sessions: `sessions list` / `search` / `show` / `alias`
+### 4. `sessions search` — cite the exact range
+
+![mobius-connect sessions search](docs/gifs/04-search.gif)
 
 ```powershell
 mobius-connect sessions list --limit 20
-mobius-connect sessions search "flaky checkout tests"
+mobius-connect sessions search "flaky tests"
 mobius-connect sessions show <session-id>
 mobius-connect sessions alias <session-id> "checkout-flake-hunt"
 ```
 
-- `search` runs lexical BM25 over the index and returns JSON hits plus `suggested_next_commands`. The response also carries `retrieval_mode` (`lexical_bm25`, or `hybrid` once embeddings are enabled **and** a local model answers) and `semantic_status` — if Ollama is missing it says so instead of pretending.
-- `show` returns one session's identity, capabilities, and lineage node without loading the transcript.
-- `alias` gives a session a human name; aliases survive reindexing and are what lineage titles display.
+`search` runs lexical BM25 and returns JSON hits plus `retrieval_mode` (`lexical_bm25`, or `hybrid` once embeddings are enabled **and** a local model answers). Copy `@session:provider/id#mN-mM`.
 
-### 5. Read exact bytes: `sessions read`
+### 5. `sessions read` — fetch the tape, bounded
+
+![mobius-connect sessions read](docs/gifs/05-read.gif)
 
 ```powershell
 mobius-connect sessions read <session-id> --offset 0 --bytes 4096
 ```
 
-Explicit byte-range read of the **original source file**, bounded (max 16384 bytes per call), returning `data` and `next_offset` for paging. This is deliberate friction: recall gives you citations, `read` makes the actual tape fetch an explicit, bounded act.
+Explicit byte-range read of the **original source file**, max 16384 bytes per call. Recall gives citations; `read` makes the actual tape fetch an explicit, bounded act.
 
-### 6. See the ancestry: `graph show` / `graph export`
+### 6. `graph show` — follow the relay chain
+
+![mobius-connect graph show](docs/gifs/06-graph.gif)
 
 ```powershell
 mobius-connect graph show <session-id>
 mobius-connect graph export --format mermaid <session-id>
-mobius-connect graph export --format html   <session-id> <another-id>
 ```
 
-`graph show` prints the lineage manifest (nodes, edges, `content_mode: references_only`, `missing_sources`). `graph export` renders it as JSON (default), Mermaid, or a standalone HTML view. Mutually-hand-off chains (Codex→Claude→Codex) come out as a forward relay chain; every handoff opens a new session, so the graph is a DAG by construction and cycles are rejected.
+Prints the lineage manifest (`content_mode: references_only`). Mutually-hand-off chains come out as a forward relay; every handoff opens a new session, so the graph is a DAG.
 
-### 7. Bounded recall: `mome recall`
+### 7. `mome recall` — recall only when asked
+
+![mobius-connect mome recall](docs/gifs/07-mome.gif)
 
 ```powershell
-mobius-connect mome recall "why do checkout tests flake on CI" --provider opencode --provider codex
+mobius-connect mome recall "why do checkout tests flake" --provider opencode --provider codex
 ```
 
-Explicit, bounded recall over the local index: at most **three** distinct sessions, about **1,200 tokens**, every hit carrying a copyable `@session:provider/id#mN-mM` citation and a content hash. It never injects into a prompt — you get JSON you choose to paste. Restrict scopes with repeated `--provider`; cap output with `--max-tokens`.
+At most **three** distinct sessions, about **1,200 tokens**, every hit carrying a copyable `@session` citation. It never injects into a prompt.
 
-### 8. Opt-in hybrid ranking: `semantic status|enable|disable|sync`
+### 8. `semantic enable` — hybrid rank is opt-in
+
+![mobius-connect semantic enable](docs/gifs/08-semantic.gif)
 
 ```powershell
 mobius-connect semantic status
@@ -132,50 +138,43 @@ mobius-connect semantic sync
 mobius-connect semantic disable
 ```
 
-Off by default. `enable` discloses that already-indexed chunks may be sent to **localhost Ollama**; nothing is ever downloaded. `sync` (re)builds the derived vector index. Missing Ollama or model = fail open to BM25 with `semantic_status` explaining why. Vectors are regenerable; transcripts remain the authority.
+Off by default. `enable` discloses that already-indexed chunks may be sent to **localhost Ollama**; nothing is downloaded. Missing Ollama = fail open to BM25.
 
-### 9. Hand off to another agent: `handoff prepare` → `approvals handoff` → `handoff commit`
+### 9. `handoff` — a person types APPROVE
+
+![mobius-connect handoff prepare and approvals](docs/gifs/09-handoff.gif)
 
 ```powershell
-mobius-connect handoff prepare --harness claude --cwd . <session-id> [<session-id-2>]
+mobius-connect handoff prepare --harness claude --cwd . <session-id>
 mobius-connect approvals handoff <handoff-id>
 mobius-connect handoff commit <handoff-id> --approval-token <token>
 mobius-connect handoff status <handoff-id>
 ```
 
-Three steps, one human in the middle:
+1. `prepare` builds a **references-only** envelope. It launches nothing.
+2. `approvals handoff` waits for you to type `APPROVE`, then mints a short-lived, single-use token.
+3. `commit` seals the handoff. MCP cannot mint this token.
 
-1. `prepare` builds a **references-only** envelope (entry sessions, confirmed ancestors, locators, token estimate). It launches nothing and copies no transcript bodies.
-2. `approvals handoff` is the human gate: it prints exactly what will be sealed and waits for you to type `APPROVE`, then mints a short-lived, single-use token. Shown once; do not log it.
-3. `commit` seals the handoff and (for verified launchers) starts the target session. `status` distinguishes `prepared` / `starting` / `awaiting_identity` / `bound` / `failed` — a started PID is **not** a bound session; never retry an unknown launch with the same token.
+### 10. `mcp serve` — stdio for agents
 
-### 10. Freeze a reference package: `memory reference`
-
-```powershell
-mobius-connect memory reference <session-id>
-```
-
-Writes an immutable lineage manifest under `handoff-graphs/` and prints a launch context (paths + confirmed edges). It returns references to the caller; it does not inject memory into any session.
-
-### 11. MCP for agents: `mcp serve`
+![mobius-connect mcp serve](docs/gifs/10-mcp.gif)
 
 ```powershell
-mobius-connect init          # MCP refuses to start without an existing vault
+mobius-connect init
 mobius-connect mcp serve
 ```
 
-stdio-only server an MCP client launches as a subprocess. Metadata tools (`list_sessions`, `get_session`, `get_index_health`, `get_lineage`, `prepare_handoff`, `get_handoff_status`, `request_session_approval`, `resolve_session`, `build_memory_reference`) are open; body-returning tools (`search_sessions`, `mome_recall`, `read_session_range`) and `commit_handoff` require a token minted by a human in a real terminal. Full tool table and client config: [docs/MCP.md](docs/MCP.md).
+stdio-only server. Metadata tools (`list_sessions`, `get_lineage`, `prepare_handoff`, …) are open; body-returning tools and `commit_handoff` require a token minted by a human in a real terminal. Full table: [docs/MCP.md](docs/MCP.md).
 
 ## Security
 
-Treat indexed transcripts as untrusted historical data, not as instructions.
+Treat indexed transcripts as untrusted historical data.
 
 - Source roots are finite and approved by a person; `sources add` is terminal-only.
 - Original files stay read-only. OpenCode is opened read-only.
-- Ordinary chat does not search other sessions.
 - A handoff envelope contains identities and edges, never transcript bodies.
-- Tokens are short-lived, single-use, scoped. Shown once. Do not log. Do not retry an unknown launch; check `handoff status`.
-- Optional embeddings talk only to localhost Ollama after `semantic enable`, change ranking only, and never widen MCP grants.
+- Tokens are short-lived, single-use, scoped. Shown once. Do not log.
+- Optional embeddings talk only to localhost Ollama after `semantic enable`.
 
 ## Supported harnesses
 
@@ -188,27 +187,6 @@ Treat indexed transcripts as untrusted historical data, not as instructions.
 | Grok | approved roots | inspect / search / handoff only |
 | OMP | approved roots | documented `--cwd … --resume …` from desktop |
 | OpenClaw | not shipped | roadmap |
-
-## Documentation
-
-| Goal | Start here |
-| --- | --- |
-| Desktop workspace | [TardisBooo/Mobius](https://github.com/TardisBooo/Mobius) |
-| Command tutorial | this README |
-| MCP tools and grants | [docs/MCP.md](docs/MCP.md) |
-| Repo split | [desktop docs/REPOS.md](https://github.com/TardisBooo/Mobius/blob/main/docs/REPOS.md) |
-| Handoff as a graph | [blog 01](https://github.com/TardisBooo/Mobius/blob/main/docs/blog/01-cross-agent-handoff.md) |
-| Citation vs summary | [blog 02](https://github.com/TardisBooo/Mobius/blob/main/docs/blog/02-citation-not-summary.md) |
-| Approval tokens | [blog 03](https://github.com/TardisBooo/Mobius/blob/main/docs/blog/03-approval-tokens.md) |
-| Session Hub SOP | [sop-session-hub.md](https://github.com/TardisBooo/Mobius/blob/main/docs/sop-session-hub.md) |
-
-## Development
-
-```powershell
-cargo test --offline
-```
-
-Use `--data-root` with an empty absolute directory. Do not point tests at `D:\DataVault\Mobius` or any real session tree.
 
 ## License
 
