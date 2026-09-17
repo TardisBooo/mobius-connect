@@ -8,7 +8,7 @@ Desktop workspace: [TardisBooo/Mobius](https://github.com/TardisBooo/Mobius).
 
 **Yours, on this machine.** The index is local SQLite. Original Codex JSONL, Claude transcripts, and OpenCode `opencode.db` are never rewritten. Möbius does not sell model accounts.
 
-[Product site](http://8.137.87.76/mobius/) · [MCP](docs/MCP.md) · [Desktop README](https://github.com/TardisBooo/Mobius/blob/feat/session-lineage-references/README.md) · [MIT License](LICENSE)
+[简体中文](README.zh-CN.md) · [Product site](http://8.137.87.76/mobius/) · [MCP](docs/MCP.md) · [Desktop README](https://github.com/TardisBooo/Mobius/blob/feat/session-lineage-references/README.md) · [MIT License](LICENSE)
 
 > Development preview. Native launch approvals and cross-harness identity binding remain release gates. Compatibility is verified per harness.
 
